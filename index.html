@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Учёт калорий</title>
+    <link rel="icon" href="1.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -83,12 +84,13 @@
         const REQUIRED_PASSWORD = "park";
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxHaKD_9dSkfFdY_c3l7sfqFFlL62HWZQgL8MGWmJJbDDF5zQ_IfKUnX1TAeiPYbBdFsw/exec';
         const MAX_ROWS = 10;
-        const MAX_INPUT_LENGTH = 4; // Ограничение ввода до 4 символов (9999 ккал)
+        const MAX_INPUT_LENGTH = 4;
 
         let data = [];
         let currentInput = "";
         let isSyncing = false;
         let syncQueue = null;
+        let isLoading = true; // Флаг блокировки перезаписи локального ввода при загрузке
 
         const inputDisplay = document.getElementById('inputDisplay');
         const tableBody = document.getElementById('tableBody');
@@ -129,17 +131,27 @@
             } catch (e) {
                 console.error('Ошибка загрузки', e);
                 syncStatus.innerText = "Ошибка сети";
+            } finally {
+                isLoading = false;
             }
         }
 
         function mergeWithServerData(serverData) {
+            // Нормализация времени до формата HH:MM и приведение value к числу
+            const normalizedServer = serverData.map(item => ({
+                time: String(item.time || "").length > 5 ? String(item.time).slice(0, 5) : String(item.time || "00:00"),
+                value: parseInt(item.value, 10) || 0
+            })).filter(item => item.value > 0);
+
             let combined = [...data];
-            serverData.forEach(srvItem => {
+            
+            normalizedServer.forEach(srvItem => {
                 let exists = combined.some(loc => loc.time === srvItem.time && loc.value === srvItem.value);
                 if (!exists) {
                     combined.push(srvItem);
                 }
             });
+
             data = combined.slice(0, MAX_ROWS);
             renderTable();
         }
@@ -249,12 +261,13 @@
                 `;
             } else {
                 data.forEach(item => {
-                    sum += item.value;
+                    let numericVal = parseInt(item.value, 10) || 0;
+                    sum += numericVal;
                     let row = document.createElement('div');
                     row.className = 'grid grid-cols-2 px-4 py-3 text-sm items-center hover:bg-slate-50/80 transition-colors';
                     row.innerHTML = `
                         <div class="font-medium text-slate-500 text-xs">${item.time}</div>
-                        <div class="text-right font-bold text-slate-800">${item.value} <span class="text-xs font-normal text-slate-400">ккал</span></div>
+                        <div class="text-right font-bold text-slate-800">${numericVal} <span class="text-xs font-normal text-slate-400">ккал</span></div>
                     `;
                     tableBody.appendChild(row);
                 });
