@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -36,9 +36,7 @@
                 <div>Время</div>
                 <div class="text-right">Калории</div>
             </div>
-            <div id="tableBody" class="flex-1 overflow-y-auto divide-y divide-slate-100">
-                <!-- Записи добавляются динамически -->
-            </div>
+            <div id="tableBody" class="flex-1 overflow-y-auto divide-y divide-slate-100"></div>
             <div class="bg-amber-100/60 px-4 py-3 border-t border-amber-200/80 flex justify-between items-center">
                 <span class="font-bold text-slate-700 text-sm">Итого:</span>
                 <span class="font-extrabold text-amber-900 text-lg"><span id="totalCalories">0</span> <span class="text-xs font-normal text-amber-800">ккал</span></span>
@@ -82,7 +80,10 @@
     </div>
 
     <script>
-        const BIN_URL = 'https://api.npoint.io/4a9fa1ed460d9a065c95';
+        const REQUIRED_PASSWORD = "park";
+        const BIN_ID = '6aeac27aac6210605a6abf33'; 
+        const API_KEY = '$2a$10$l3m4xc6YrrBQqwpJTrCa.e62liYOmUGNbip28.cjs2Uuzll8Ovbaa'; 
+        const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
         const MAX_ROWS = 10;
         let data = [];
@@ -93,13 +94,30 @@
         const totalCalories = document.getElementById('totalCalories');
         const modalBackdrop = document.getElementById('modalBackdrop');
 
+        function checkAuth() {
+            let savedPass = localStorage.getItem('app_password');
+            if (savedPass === REQUIRED_PASSWORD) return true;
+
+            let inputPass = prompt("Введите пароль для доступа:");
+            if (inputPass === REQUIRED_PASSWORD) {
+                localStorage.setItem('app_password', inputPass);
+                return true;
+            } else {
+                alert("Неверный пароль!");
+                return false;
+            }
+        }
+
         async function loadData() {
+            if (!checkAuth()) return;
             try {
-                let response = await fetch(BIN_URL);
+                let response = await fetch(`${BIN_URL}/latest`, {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
                 if (response.ok) {
                     let json = await response.json();
-                    if (Array.isArray(json)) {
-                        data = json;
+                    if (Array.isArray(json.record)) {
+                        data = json.record;
                         renderTable();
                     }
                 }
@@ -111,8 +129,11 @@
         async function saveData() {
             try {
                 await fetch(BIN_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
                     body: JSON.stringify(data)
                 });
             } catch (e) {
@@ -137,6 +158,7 @@
         }
 
         async function submitData() {
+            if (!checkAuth()) return;
             let val = currentInput.trim();
             if (!val || parseInt(val, 10) === 0) return;
 
@@ -156,6 +178,7 @@
         }
 
         function confirmReset() {
+            if (!checkAuth()) return;
             modalBackdrop.classList.remove('hidden');
             modalBackdrop.classList.add('flex');
         }
