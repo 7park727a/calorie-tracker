@@ -117,8 +117,9 @@
                 });
                 if (response.ok) {
                     let json = await response.json();
-                    if (Array.isArray(json.record)) {
-                        data = json.record;
+                    if (json && json.record) {
+                        // Поддержка разной структуры ответа jsonbin
+                        data = Array.isArray(json.record) ? json.record : (json.record.record || []);
                         renderTable();
                     }
                 }
