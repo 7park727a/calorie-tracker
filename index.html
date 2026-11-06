@@ -22,13 +22,15 @@
 <body class="bg-amber-50/60 text-slate-800 antialiased min-h-screen flex flex-col justify-between max-w-md mx-auto relative select-none">
 
     <header class="p-4 bg-white/80 backdrop-blur border-b border-amber-200/50 sticky top-0 z-10 flex justify-between items-center shadow-sm">
-        <div class="flex items-center gap-2.5">
-            <svg id="syncSpinner" class="w-4 h-4 text-amber-600 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
-            </svg>
+        <div class="flex items-center gap-3">
+            <div id="syncIndicator" class="flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 transition-all">
+                <svg id="syncSpinner" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                </svg>
+            </div>
             <div>
                 <h1 class="font-bold text-lg text-slate-900 leading-tight">Дневник калорий</h1>
-                <p id="syncStatus" class="text-xs text-slate-400">Загрузка...</p>
+                <p id="syncStatus" class="text-xs text-slate-500 font-medium">Загрузка...</p>
             </div>
         </div>
         <button onclick="confirmReset()" class="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200/60">
@@ -70,7 +72,7 @@
             <button onclick="pressNum('9')" class="btn-press bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl py-3.5 text-xl font-bold text-slate-800 shadow-sm transition-all">9</button>
             <button onclick="backspace()" class="btn-press bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl py-3.5 text-lg font-bold shadow-sm transition-all flex items-center justify-center">⌫</button>
             <button onclick="pressNum('0')" class="btn-press bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl py-3.5 text-xl font-bold text-slate-800 shadow-sm transition-all">0</button>
-            <button onclick="submitData()" class="btn-press bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-3.5 text-xl font-bold shadow-sm transition-all flex items-center justify-center">✓</button>
+            <button id="submitBtn" onclick="submitData()" class="btn-press bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-3.5 text-xl font-bold shadow-sm transition-all flex items-center justify-center">✓</button>
         </div>
     </footer>
 
@@ -100,15 +102,23 @@
         const tableBody = document.getElementById('tableBody');
         const totalCalories = document.getElementById('totalCalories');
         const syncStatus = document.getElementById('syncStatus');
+        const syncIndicator = document.getElementById('syncIndicator');
         const syncSpinner = document.getElementById('syncSpinner');
+        const submitBtn = document.getElementById('submitBtn');
         const modalBackdrop = document.getElementById('modalBackdrop');
 
         function setSyncingState(active, text) {
             syncStatus.innerText = text;
             if (active) {
+                syncIndicator.className = "flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-white shadow-md transition-all animate-pulse";
                 syncSpinner.classList.remove('hidden');
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
             } else {
+                syncIndicator.className = "flex items-center justify-center w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 transition-all";
                 syncSpinner.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
 
@@ -128,9 +138,8 @@
 
         async function loadData() {
             if (!checkAuth()) return;
-            setSyncingState(true, "Синхронизация...");
+            setSyncingState(true, "Загрузка данных...");
             try {
-                // Добавлен временной параметр для предотвращения кэширования на Android и Windows
                 let response = await fetch(`${GOOGLE_SCRIPT_URL}?pass=${encodeURIComponent(REQUIRED_PASSWORD)}&_t=${Date.now()}`);
                 if (response.ok) {
                     let json = await response.json();
@@ -180,7 +189,6 @@
                     })
                 });
                 
-                // Принудительная синхронизация с сервером после сохранения для консистентности между устройствами
                 await loadData();
             } catch (e) {
                 console.error('Ошибка сохранения', e);
